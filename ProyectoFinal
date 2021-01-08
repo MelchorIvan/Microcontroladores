@@ -397,3 +397,183 @@ Sube_Cancion
    MOVWF INDF
    INCF  FSR
 RETURN
+  
+CargaContador
+   MOVLW d'149'
+   XORWF CONTADOR,0
+   BTFSS STATUS,Z
+   GOTO  E_CC143
+   MOVLW d'64'	    ;MOVLW d'74'
+   MOVWF  i
+   MOVLW d'255'
+   MOVWF  j
+   MOVLW d'255'
+   MOVWF  k
+   GOTO E_CCF
+E_CC143
+   MOVLW d'143'
+   XORWF CONTADOR,0
+   BTFSS STATUS,Z
+   GOTO  E_CC136
+   MOVLW d'43'
+   MOVWF  i
+   MOVLW d'255'
+   MOVWF  j
+   MOVLW d'255'
+   MOVWF  k
+   GOTO E_CCF
+E_CC136
+   MOVLW d'136'
+   XORWF CONTADOR,0
+   BTFSS STATUS,Z
+   GOTO  E_CC131
+   MOVLW d'11'
+   MOVWF  i
+   MOVLW d'255'
+   MOVWF  j
+   MOVLW d'255'
+   MOVWF  k
+   GOTO E_CCF
+E_CC131
+   MOVLW d'131'
+   XORWF CONTADOR,0
+   BTFSS STATUS,Z
+   GOTO  E_CC129
+   MOVLW d'0'
+   MOVWF  i
+   MOVLW d'245'
+   MOVWF  j
+   MOVLW d'255'
+   MOVWF  k
+   GOTO E_CCF
+E_CC129
+   MOVLW d'129'
+   XORWF CONTADOR,0
+   BTFSS STATUS,Z
+   GOTO  E_CC122
+   MOVLW d'0'
+   MOVWF  i
+   MOVLW d'237'
+   MOVWF  j
+   MOVLW d'255'
+   MOVWF  k
+   GOTO E_CCF
+E_CC122
+   MOVLW d'122'
+   XORWF CONTADOR,0
+   BTFSS STATUS,Z
+   GOTO  E_CC114
+   MOVLW d'0'
+   MOVWF  i
+   MOVLW d'211'
+   MOVWF  j
+   MOVLW d'255'
+   MOVWF  k
+   GOTO E_CCF
+E_CC114
+   MOVLW d'114'
+   XORWF CONTADOR,0
+   BTFSS STATUS,Z
+   GOTO  E_CC105
+   MOVLW d'0'
+   MOVWF  i
+   MOVLW d'185'
+   MOVWF  j
+   MOVLW d'255'
+   MOVWF  k
+   GOTO E_CCF
+E_CC105
+   MOVLW d'105'
+   XORWF CONTADOR,0
+   BTFSS STATUS,Z
+   GOTO  E_CC96
+   MOVLW d'0'
+   MOVWF  i
+   MOVLW d'159'
+   MOVWF  j
+   MOVLW d'255'
+   MOVWF  k
+   GOTO E_CCF
+E_CC96
+   MOVLW d'96'
+   XORWF CONTADOR,0
+   BTFSS STATUS,Z
+   GOTO  E_CC87
+   MOVLW d'0'
+   MOVWF  i
+   MOVLW d'136'
+   MOVWF  j
+   MOVLW d'255'
+   MOVWF  k
+   GOTO E_CCF
+E_CC87
+   MOVLW d'87'
+   XORWF CONTADOR,0
+   BTFSS STATUS,Z
+   GOTO  E_CC77
+   MOVLW d'0'
+   MOVWF  i
+   MOVLW d'115'
+   MOVWF  j
+   MOVLW d'255'
+   MOVWF  k
+   GOTO E_CCF
+E_CC77
+   MOVLW d'77'
+   XORWF CONTADOR,0
+   BTFSS STATUS,Z
+   GOTO  E_CC66
+   MOVLW d'0'
+   MOVWF  i
+   MOVLW d'94'
+   MOVWF  j
+   MOVLW d'255'
+   MOVWF  k
+   GOTO E_CCF
+E_CC66
+   MOVLW d'66'
+   XORWF CONTADOR,0
+   BTFSS STATUS,Z
+   GOTO  E_CC55
+   MOVLW d'0'
+   MOVWF  i
+   MOVLW d'74'
+   MOVWF  j
+   MOVLW d'255'
+   MOVWF  k
+   GOTO E_CCF
+E_CC55
+   MOVLW d'55'
+   XORWF CONTADOR,0
+   BTFSS STATUS,Z
+   GOTO  E_CC17
+   MOVLW d'0'
+   MOVWF  i
+   MOVLW d'56'
+   MOVWF  j
+   MOVLW d'255'
+   MOVWF  k
+   GOTO E_CCF
+E_CC17
+   MOVLW d'17'
+   XORWF CONTADOR,0
+   BTFSS STATUS,Z
+   GOTO E_CC00
+   MOVLW d'0'
+   MOVWF  i
+   MOVLW d'7'
+   MOVWF  j
+   MOVLW d'255'
+   MOVWF  k
+   GOTO E_CCF
+E_CC00
+   MOVLW d'0'
+   MOVWF  i
+   MOVLW d'0'
+   MOVWF  j
+   MOVLW d'0'
+   MOVWF  k
+ E_CCF
+RETURN  
+   
+END
