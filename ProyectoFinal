@@ -1,0 +1,399 @@
+#include "p16F628a.inc" ;incluir librerias relacionadas con el dispositivo
+__CONFIG _FOSC_INTOSCCLK & _WDTE_OFF & _PWRTE_OFF & _MCLRE_OFF & _BOREN_OFF & _LVP_OFF & _CPD_OFF & _CP_OFF
+
+;configuración del dispositivo todo en OFF y la frecuencia de oscilador
+    
+CONTADOR  equ 0x20  ;Con este se carga TMR0
+NOTA_M    equ 0x21
+PASO      equ 0x22  ;0 BAJO  1 ALTO
+i         equ 0x24
+j         equ 0x25 
+k    equ 0x26
+CNT       EQU 0x27
+CNTCICLO  EQU 0x28 
+  
+RES_VECT CODE 0x0000                   ; processor reset vector
+    GOTO START                    ; go to beginning of program
+
+;Etiquetas EI_*
+INT_VECT CODE 0x0004       ;interrupt vector
+    BTFSS INTCON,T0IF ; Interrupcion de timer 0?
+    GOTO  E_IF        ; Salir de int.           
+    BCF  STATUS,RP0   ; Garantiza que estamos en banco 0
+    MOVFW CONTADOR
+    MOVWF TMR0
+    ;->no puedo asignar una nueva nota si ya acabe la cancion (cnt=0)
+    ;->no puedo asignar una nueva nota si los contadores i,j,k no son cero
+    ;->no puedo asignar una nueva nota si cntciclo < 2
+    ;->no puedo asignar una nueva nota si no he concluido el ciclo completo
+    ;  (solo en el paso 0 se puede)
+    MOVFW CNT
+    XORLW 0x00        ; FF se acabo cancion;;
+    BTFSC STATUS,Z    
+    GOTO  E_IF        ; Se acabó cancion...  =(
+;   Evalua contadores i,j,k tienen que estar en cero para asignar una nueva nota
+    MOVFW k    
+    XORLW 0x00 ; evalua k
+    BTFSS STATUS,Z    ; 
+    GOTO  E_k  ; Decrementa contador k
+    MOVFW j    
+    XORLW 0x00 ; evalua j
+    BTFSS STATUS,Z    ; 
+    GOTO  E_j  ;Decrementa contador j
+    MOVFW i    
+    XORLW 0x00 ; evalua i
+    BTFSS STATUS,Z    ; 
+    GOTO  E_i  ;Decrementa contador  i
+    BTFSC PASO,0   
+    GOTO  E_p1
+    MOVFW CNTCICLO  ; El ciclo se repite dos veces
+    SUBLW 0x01	    ;SUBLW 0x02      
+    BTFSS STATUS,Z    
+    GOTO  E_CC
+    CLRF  CNTCICLO 
+    CALL  Siguiente_nota    ;obtiene la nota siguiente 
+E_CC
+    CALL  CargaContador
+    GOTO E_p0
+E_k
+    DECFSZ k,F
+    GOTO E_kji
+    MOVFW j
+    XORLW 0x00
+    BTFSS STATUS,Z    ; 
+    GOTO E_kji
+    MOVFW i
+    XORLW 0x00
+    BTFSS STATUS,Z    ; 
+    GOTO E_kji
+    INCF CNTCICLO   
+    GOTO E_kji    
+E_j
+    DECFSZ j,F
+    GOTO E_kji
+    MOVFW i
+    XORLW 0x00
+    BTFSS STATUS,Z    ; 
+    GOTO E_kji
+    INCF CNTCICLO   
+    GOTO E_kji    
+E_i
+    DECFSZ i,F
+    GOTO E_kji
+    INCF CNTCICLO   
+E_kji
+    BTFSC PASO,0
+    GOTO  E_p1 ;Está en paso 1
+E_p0
+    BCF PORTB,7
+    BSF PASO,0  ;Paso = 1
+    GOTO E_IF
+E_p1  ; Estoy en PASO = 1
+   MOVFW CONTADOR  
+   XORLW d'131'     ;nota de silencio
+   BTFSC STATUS, Z  
+   GOTO E_pb0
+   BSF PORTB,7   
+   GOTO E_pb1
+E_pb0
+   BCF PORTB,7      
+E_pb1
+   CLRF PASO    ; Sigue Paso 0   
+E_IF
+    BCF INTCON, 2 ; clr TMR0 interrupt flag
+    RETFIE ; return from interrupt
+            
+
+;*******************************    
+MAIN_PROG CODE
+
+     
+
+  
+START
+    MOVLW 0x07   ;apagar comparadores  
+    MOVWF CMCON  ;apaga convertidor
+    BSF STATUS, RP0  ;apunta a banco 1 para mover OPTION_REG
+    MOVLW 0x00
+    MOVWF TRISA
+    MOVWF TRISB
+    MOVLW b'10000010'   ;PREESCALER EN 8
+    MOVWF OPTION_REG
+    BCF STATUS, RP0   ;regresa a banco 0
+
+    CALL Sube_Cancion  ;                                  
+    MOVLW d'77'  ;77 notas musicales
+    MOVWF CNT    ;
+    MOVLW 0x2A   ;Direccion donde empieza la canción
+    MOVWF FSR    ;Asigna direccion
+    CLRF  PASO    ;empieza paso 0 (onda baja)
+    CLRF  CONTADOR
+    CLRF  i
+    CLRF  j
+    CLRF  k
+    MOVLW 0x01	    ;SUBLW 0x02
+    MOVWF CNTCICLO  ;Para que entre por primera vez
+;setup TMR0 INT
+    CLRF PORTA
+    CLRF PORTB
+    BCF  PORTB,7
+    ;CLRF CONTROL ;=0 -> listo nota, 1->tocando nota, FF se acabó...
+    MOVLW d'66'
+    MOVWF TMR0
+    MOVLW b'10100000'
+    MOVWF INTCON
+    NOP
+    GOTO $-1     ;Ciclo infinito
+    
+
+RETURN    
+    
+;*** Obtener la nota siguiente    
+Siguiente_nota
+    MOVFW INDF      ;FSR empieza en la dirección 0x2A
+    MOVWF CONTADOR
+    MOVWF TMR0
+    INCF  FSR
+    DECFSZ CNT,F
+    GOTO E_SNR
+    ;BCF INTCON, 5
+    NOP
+E_SNR
+    
+RETURN
+    
+Sube_Cancion    
+   MOVLW 0x2A
+   MOVWF FSR
+   MOVLW d'66' ;Primera nota
+   MOVWF INDF
+   INCF  FSR
+   MOVLW d'96'
+   MOVWF INDF
+   INCF  FSR
+   MOVLW d'96'
+   MOVWF INDF
+   INCF  FSR
+   MOVLW d'96'
+   MOVWF INDF
+   INCF  FSR
+   MOVLW d'77'
+   MOVWF INDF
+   INCF  FSR
+   MOVLW d'66'
+   MOVWF INDF
+   INCF  FSR
+   MOVLW d'96'
+   MOVWF INDF
+   INCF  FSR
+;   MOVLW d'131'
+;   MOVWF INDF
+;   INCF  FSR
+;   MOVLW d'131'
+;   MOVWF INDF
+;   INCF  FSR
+   MOVLW d'96'
+   MOVWF INDF
+   INCF  FSR
+   MOVLW d'114'
+   MOVWF INDF
+   INCF  FSR
+   MOVLW d'77'
+   MOVWF INDF
+   INCF  FSR
+   MOVLW d'114'
+   MOVWF INDF
+   INCF  FSR
+   MOVLW d'136'
+   MOVWF INDF
+   INCF  FSR
+   MOVLW d'114'
+   MOVWF INDF
+   INCF  FSR
+   MOVLW d'96'
+   MOVWF INDF
+   INCF  FSR
+;   MOVLW d'131'
+;   MOVWF INDF
+;   INCF  FSR
+;   MOVLW d'131'
+;   MOVWF INDF
+;   INCF  FSR
+   MOVLW d'96'
+   MOVWF INDF
+   INCF  FSR
+   MOVLW d'114'
+   MOVWF INDF
+   INCF  FSR
+   MOVLW d'77'
+   MOVWF INDF
+   INCF  FSR
+   MOVLW d'114'
+   MOVWF INDF
+   INCF  FSR
+   MOVLW d'136'
+   MOVWF INDF
+   INCF  FSR
+   MOVLW d'129'
+   MOVWF INDF
+   INCF  FSR
+   MOVLW d'114'
+   MOVWF INDF
+   INCF  FSR
+   MOVLW d'96'
+   MOVWF INDF
+   INCF  FSR
+   MOVLW d'114'
+   MOVWF INDF
+   INCF  FSR
+   MOVLW d'96'
+   MOVWF INDF
+   INCF  FSR
+   MOVLW d'66'
+   MOVWF INDF
+   INCF  FSR
+   MOVLW d'17'
+   MOVWF INDF
+   INCF  FSR
+   MOVLW d'66'
+   MOVWF INDF
+   INCF  FSR
+   MOVLW d'96'
+   MOVWF INDF
+   INCF  FSR
+   MOVLW d'96'
+   MOVWF INDF
+   INCF  FSR
+   MOVLW d'96'
+   MOVWF INDF
+   INCF  FSR
+   MOVLW d'114'
+   MOVWF INDF
+   INCF  FSR
+   MOVLW d'129'
+   MOVWF INDF
+   INCF  FSR
+   MOVLW d'136'
+   MOVWF INDF
+   INCF  FSR
+;   MOVLW d'131'
+;   MOVWF INDF
+;   INCF  FSR
+;   MOVLW d'131'
+;   MOVWF INDF
+;   INCF  FSR
+   MOVLW d'87'
+   MOVWF INDF
+   INCF  FSR
+   MOVLW d'114'
+   MOVWF INDF
+   INCF  FSR
+   MOVLW d'114'
+   MOVWF INDF
+   INCF  FSR
+   MOVLW d'114'
+   MOVWF INDF
+   INCF  FSR
+   MOVLW d'96'
+   MOVWF INDF
+   INCF  FSR
+   MOVLW d'77'
+   MOVWF INDF
+   INCF  FSR
+   MOVLW d'114'
+   MOVWF INDF
+   INCF  FSR
+;   MOVLW d'131'
+;   MOVWF INDF
+;   INCF  FSR
+;   MOVLW d'131'
+;   MOVWF INDF
+;   INCF  FSR
+   MOVLW d'114'
+   MOVWF INDF
+   INCF  FSR
+   MOVLW d'129'
+   MOVWF INDF
+   INCF  FSR
+   MOVLW d'105'
+   MOVWF INDF
+   INCF  FSR
+   MOVLW d'129'
+   MOVWF INDF
+   INCF  FSR
+   MOVLW d'143'
+   MOVWF INDF
+   INCF  FSR
+   MOVLW d'129'
+   MOVWF INDF
+   INCF  FSR
+   MOVLW d'114'
+   MOVWF INDF
+   INCF  FSR
+;   MOVLW d'131'
+;   MOVWF INDF
+;   INCF  FSR
+;   MOVLW d'131'
+;   MOVWF INDF
+;   INCF  FSR
+   MOVLW d'114'
+   MOVWF INDF
+   INCF  FSR
+   MOVLW d'129'
+   MOVWF INDF
+   INCF  FSR
+   MOVLW d'96'
+   MOVWF INDF
+   INCF  FSR
+   MOVLW d'129'
+   MOVWF INDF
+   INCF  FSR
+   MOVLW d'149'
+   MOVWF INDF
+   INCF  FSR
+   MOVLW d'136'
+   MOVWF INDF
+   INCF  FSR
+   MOVLW d'129'
+   MOVWF INDF
+   INCF  FSR
+   MOVLW d'122'
+   MOVWF INDF
+   INCF  FSR
+   MOVLW d'129'
+   MOVWF INDF
+   INCF  FSR
+   MOVLW d'122'
+   MOVWF INDF
+   INCF  FSR
+   MOVLW d'87'
+   MOVWF INDF
+   INCF  FSR
+   MOVLW d'55'
+   MOVWF INDF
+   INCF  FSR
+   MOVLW d'87'
+   MOVWF INDF
+   INCF  FSR
+   MOVLW d'114'
+   MOVWF INDF
+   INCF  FSR
+   MOVLW d'114'
+   MOVWF INDF
+   INCF  FSR
+   MOVLW d'114'
+   MOVWF INDF
+   INCF  FSR
+   MOVLW d'129'
+   MOVWF INDF                                                                  
+   INCF  FSR
+   MOVLW d'136'
+   MOVWF INDF
+   INCF  FSR
+   MOVLW d'149'
+   MOVWF INDF
+   INCF  FSR
+   MOVLW d'131'
+   MOVWF INDF
+   INCF  FSR
+RETURN
